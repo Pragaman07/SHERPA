@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+credentials.json
+token.json
+leads.db
+selenium_data/
+sherpa/config.py
+.env
