@@ -38,10 +38,21 @@ def create_table(conn):
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """
+    create_examples_table_sql = """
+    CREATE TABLE IF NOT EXISTS examples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT, -- 'Email', 'LinkedIn', 'WhatsApp'
+        content TEXT,
+        context TEXT, -- Optional notes
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """
     try:
         c = conn.cursor()
         c.execute(create_leads_table_sql)
         print("Table 'leads' created successfully.")
+        c.execute(create_examples_table_sql)
+        print("Table 'examples' created successfully.")
     except sqlite3.Error as e:
         print(e)
 

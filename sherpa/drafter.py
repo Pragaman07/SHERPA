@@ -18,6 +18,11 @@ def generate_drafts(lead):
     model = genai.GenerativeModel('gemini-flash-latest')
     
     # Construct the prompt (The "Noboru Protocol")
+    # Fetch Examples for Few-Shot Learning
+    cursor.execute("SELECT content FROM examples WHERE type = 'Email' ORDER BY RANDOM() LIMIT 2")
+    email_examples = cursor.fetchall()
+    email_examples_text = "\n\n".join([f"Example {i+1}:\n{ex[0]}" for i, ex in enumerate(email_examples)])
+    
     prompt = f"""
     You are Pragaman, a strategic sales architect at Noboru World.
     Your goal is to draft a hyper-personalized, peer-to-peer outreach sequence.
@@ -39,6 +44,9 @@ def generate_drafts(lead):
        - If Email is "N/A", set "email_subject" and "email_body" to null.
        - If LinkedIn URL is "N/A", set "linkedin_note" to null.
        - If Phone is "N/A", set "whatsapp_nudge" to null.
+
+    ### Style Reference (EMULATE THIS FLOW):
+    {email_examples_text if email_examples_text else "No examples provided. Use standard professional tone."}
     
     ### Deliverables (Only if data available):
     1. **Cold Email**: Subject (lowercase, 2-4 words) + Body (under 75 words).

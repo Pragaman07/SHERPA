@@ -64,7 +64,7 @@ from drafter import run_drafter
 
 # Sidebar Navigation
 st.sidebar.title("🏔️ SHERPA")
-page = st.sidebar.radio("Navigate", ["Approval Dashboard", "Lead Tracker", "Add Manual Lead", "Upload Leads", "AI Discovery"])
+page = st.sidebar.radio("Navigate", ["Approval Dashboard", "Lead Tracker", "Add Manual Lead", "Upload Leads", "AI Discovery", "Train Sherpa"])
 
 st.sidebar.markdown("---")
 
@@ -317,6 +317,45 @@ elif page == "AI Discovery":
             conn.close()
             st.success(f"Added {added} leads to database! ({skipped} duplicates skipped)")
             del st.session_state['ai_leads'] # Clear after adding
+
+elif page == "Train Sherpa":
+    st.title("🧠 Train Sherpa")
+    st.markdown("Teach the AI your style by providing examples of successful messages.")
+    
+    with st.form("add_example_form"):
+        st.subheader("Add New Example")
+        ex_type = st.selectbox("Type", ["Email", "LinkedIn", "WhatsApp"])
+        ex_content = st.text_area("Message Content (Paste the full body)", height=150)
+        ex_context = st.text_input("Context (Optional, e.g., 'Good for CEOs')")
+        submitted = st.form_submit_button("Save Example")
+        
+        if submitted and ex_content:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO examples (type, content, context) VALUES (?, ?, ?)", (ex_type, ex_content, ex_context))
+            conn.commit()
+            conn.close()
+            st.success("Example saved! Sherpa will use this to learn your style.")
+            
+    st.markdown("---")
+    st.subheader("Your Training Data")
+    
+    conn = get_db_connection()
+    examples = pd.read_sql_query("SELECT * FROM examples ORDER BY created_at DESC", conn)
+    conn.close()
+    
+    if not examples.empty:
+        for index, row in examples.iterrows():
+            with st.expander(f"{row['type']} - {row['context'] if row['context'] else 'No context'}"):
+                st.code(row['content'])
+                if st.button("Delete", key=f"del_{row['id']}"):
+                    conn = get_db_connection()
+                    conn.execute("DELETE FROM examples WHERE id = ?", (row['id'],))
+                    conn.commit()
+                    conn.close()
+                    st.rerun()
+    else:
+        st.info("No examples added yet. Add some above!")
 
 elif page == "Approval Dashboard":
     st.title("✅ Approval Dashboard")
