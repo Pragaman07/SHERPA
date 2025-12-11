@@ -5,5 +5,5 @@ credentials.json
 token.json
 leads.db
 selenium_data/
-sherpa/config.py
+sherpa/config_local.py
 .env
