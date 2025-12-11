@@ -2,6 +2,24 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from config import DB_PATH
+import time
+import os
+from db_setup import setup_database
+
+# Ensure DB exists on startup (for Cloud Deployment)
+if not os.path.exists(DB_PATH):
+    setup_database()
+else:
+    # Double check if tables exist, if not run setup
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='leads'")
+        if not cursor.fetchone():
+            setup_database()
+        conn.close()
+    except:
+        setup_database()
 
 st.set_page_config(page_title="SHERPA Dashboard", layout="wide")
 
