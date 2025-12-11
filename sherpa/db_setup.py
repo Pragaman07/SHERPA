@@ -2,14 +2,14 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_NAME = "leads.db"
+from config import DB_PATH
 
 def create_connection():
     """Create a database connection to the SQLite database."""
     conn = None
     try:
-        conn = sqlite3.connect(DB_NAME)
-        print(f"Connected to {DB_NAME}")
+        conn = sqlite3.connect(DB_PATH)
+        print(f"Connected to {DB_PATH}")
         return conn
     except sqlite3.Error as e:
         print(e)
@@ -56,9 +56,9 @@ def create_table(conn):
     except sqlite3.Error as e:
         print(e)
 
-def main():
-    if os.path.exists(DB_NAME):
-        print(f"Database {DB_NAME} already exists.")
+def setup_database():
+    if os.path.exists(DB_PATH):
+        print(f"Database {DB_PATH} already exists.")
     
     conn = create_connection()
     if conn:
@@ -68,4 +68,4 @@ def main():
         print("Error! cannot create the database connection.")
 
 if __name__ == '__main__':
-    main()
+    setup_database()
