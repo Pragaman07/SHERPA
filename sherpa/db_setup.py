@@ -47,14 +47,16 @@ def create_table(conn):
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """
-    try:
-        c = conn.cursor()
-        c.execute(create_leads_table_sql)
-        print("Table 'leads' created successfully.")
-        c.execute(create_examples_table_sql)
-        print("Table 'examples' created successfully.")
     except sqlite3.Error as e:
         print(e)
+
+def add_column_if_not_exists(conn, table, column, col_type):
+    try:
+        c = conn.cursor()
+        c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+        print(f"Added column {column} to {table}")
+    except sqlite3.OperationalError:
+        pass # Column likely exists
 
 def setup_database():
     if os.path.exists(DB_PATH):
@@ -63,6 +65,8 @@ def setup_database():
     conn = create_connection()
     if conn:
         create_table(conn)
+        # Migration: Add attachment_file column if it doesn't exist
+        add_column_if_not_exists(conn, "leads", "attachment_file", "TEXT")
         conn.close()
     else:
         print("Error! cannot create the database connection.")

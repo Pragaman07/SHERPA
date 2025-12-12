@@ -82,7 +82,7 @@ from drafter import run_drafter
 
 # Sidebar Navigation
 st.sidebar.title("🏔️ SHERPA")
-page = st.sidebar.radio("Navigate", ["Approval Dashboard", "Lead Tracker", "Add Manual Lead", "Upload Leads", "AI Discovery", "Train Sherpa"])
+page = st.sidebar.radio("Navigate", ["Approval Dashboard", "Lead Tracker", "Add Manual Lead", "Upload Leads", "AI Discovery", "Train Sherpa", "Asset Manager"])
 
 st.sidebar.markdown("---")
 
@@ -375,47 +375,142 @@ elif page == "Train Sherpa":
     else:
         st.info("No examples added yet. Add some above!")
 
+elif page == "Asset Manager":
+    st.title("📂 Asset Manager")
+    st.markdown("Upload creative assets (Images/Videos) for your outreach.")
+    
+    # File Uploader
+    uploaded_file = st.file_uploader("Upload Creative", type=["png", "jpg", "jpeg", "mp4", "pdf"])
+    
+    if uploaded_file is not None:
+        file_path = os.path.join("assets", uploaded_file.name)
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success(f"Saved {uploaded_file.name} to assets/")
+        
+    st.markdown("---")
+    st.subheader("Available Assets")
+    
+    # List assets
+    if not os.path.exists("assets"):
+        os.makedirs("assets")
+        
+    asset_files = [f for f in os.listdir("assets") if not f.startswith(".")]
+    if asset_files:
+        for f in asset_files:
+            col1, col2 = st.columns([3, 1])
+            col1.text(f)
+            if col2.button("Delete", key=f"del_asset_{f}"):
+                os.remove(os.path.join("assets", f))
+                st.rerun()
+            
+            # Preview (if image)
+            if f.lower().endswith(('.png', '.jpg', '.jpeg')):
+                st.image(os.path.join("assets", f), width=200)
+    else:
+        st.info("No assets found. Upload one!")
+
 elif page == "Approval Dashboard":
     st.title("✅ Approval Dashboard")
+    
+    # Fetch drafts
+    conn = get_db_connection()
+    # Fetch all columns including attachment_file
+    drafts = pd.read_sql_query("SELECT * FROM leads WHERE status = 'Pending_Approval'", conn)
+    conn.close()
+    
+    # Get available assets for dropdown
+    available_assets = ["None"]
+    if os.path.exists("assets"):
+        available_assets += [f for f in os.listdir("assets") if not f.startswith(".")]
 
-    drafts = load_pending_drafts()
-
-    if drafts.empty:
-        st.info("No drafts pending approval. Great job!")
-    else:
-        st.write(f"Found {len(drafts)} drafts pending review.")
+    if not drafts.empty:
+        st.info(f"You have {len(drafts)} drafts pending approval.")
         
+        # Bulk Actions
+        col1, col2 = st.columns(2)
+        if col1.button("Approve ALL Drafts"):
+            conn = get_db_connection()
+            conn.execute("UPDATE leads SET status = 'Approved' WHERE status = 'Pending_Approval'")
+            conn.commit()
+            conn.close()
+            st.success("All drafts approved! Ready to send.")
+            st.rerun()
+            
+        with col2.expander("Bulk Assign Asset"):
+            bulk_asset = st.selectbox("Select Asset for ALL", available_assets)
+            if st.button("Apply Asset to All"):
+                 conn = get_db_connection()
+                 conn.execute("UPDATE leads SET attachment_file = ? WHERE status = 'Pending_Approval'", (bulk_asset if bulk_asset != "None" else None,))
+                 conn.commit()
+                 conn.close()
+                 st.success(f"Applied {bulk_asset} to all pending drafts.")
+                 st.rerun()
+
         for index, row in drafts.iterrows():
-            with st.expander(f"{row['first_name']} {row['last_name']} - {row['company']}", expanded=True):
-                col1, col2 = st.columns([1, 2])
+            with st.expander(f"{row['first_name']} {row['last_name']} - {row['company']}"):
+                # Editable Fields
+                col1, col2 = st.columns(2)
+                new_email_subject = col1.text_input("Email Subject", value=row['draft_email_subject'] or "", key=f"subj_{row['id']}")
+                new_email_body = col1.text_area("Email Body", value=row['draft_email_body'] or "", height=200, key=f"body_{row['id']}")
+                new_li_note = col2.text_area("LinkedIn Note", value=row['draft_linkedin_note'] or "", height=100, key=f"li_{row['id']}")
+                new_wa_nudge = col2.text_area("WhatsApp Nudge", value=row['draft_whatsapp_nudge'] or "", height=100, key=f"wa_{row['id']}")
                 
-                with col1:
-                    st.subheader("Prospect Info")
-                    st.write(f"**Title:** {row['title']}")
-                    st.write(f"**Location:** {row['location']}")
-                    st.write(f"**LinkedIn:** [{row['linkedin_url']}]({row['linkedin_url']})")
-                    st.write(f"**Email:** {row['email']}")
-                
-                with col2:
-                    st.subheader("Draft Content")
+                # Attachment Selection
+                current_asset = row['attachment_file'] if row['attachment_file'] else "None"
+                # Handle case where file might have been deleted
+                if current_asset not in available_assets:
+                    current_asset = "None"
                     
-                    with st.form(key=f"form_{row['id']}"):
-                        subject = st.text_input("Email Subject", value=row['draft_email_subject'])
-                        body = st.text_area("Email Body", value=row['draft_email_body'], height=200)
-                        li_note = st.text_area("LinkedIn Note", value=row['draft_linkedin_note'], height=100)
-                        wa_nudge = st.text_input("WhatsApp Nudge", value=row['draft_whatsapp_nudge'])
-                        
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            if st.form_submit_button("✅ Approve"):
-                                update_draft(row['id'], subject, body, li_note, wa_nudge)
-                                approve_draft(row['id'])
-                                st.rerun()
-                        with c2:
-                            if st.form_submit_button("💾 Save Edits"):
-                                update_draft(row['id'], subject, body, li_note, wa_nudge)
-                                st.success("Draft updated.")
-                        with c3:
-                            if st.form_submit_button("❌ Reject"):
-                                reject_draft(row['id'])
-                                st.rerun()
+                selected_asset = st.selectbox("Attachment", available_assets, index=available_assets.index(current_asset), key=f"asset_{row['id']}")
+                
+                # Actions for this single draft
+                c1, c2, c3 = st.columns(3)
+                if c1.button("Approve", key=f"app_{row['id']}"):
+                    conn = get_db_connection()
+                    conn.execute("""
+                        UPDATE leads 
+                        SET status = 'Approved', 
+                            draft_email_subject = ?, 
+                            draft_email_body = ?, 
+                            draft_linkedin_note = ?, 
+                            draft_whatsapp_nudge = ?,
+                            attachment_file = ?
+                        WHERE id = ?
+                    """, (new_email_subject, new_email_body, new_li_note, new_wa_nudge, selected_asset if selected_asset != "None" else None, row['id']))
+                    conn.commit()
+                    conn.close()
+                    st.toast(f"Approved {row['first_name']}")
+                    time.sleep(0.5)
+                    st.rerun()
+                    
+                if c2.button("Reject/Delete", key=f"rej_{row['id']}"):
+                    conn = get_db_connection()
+                    conn.execute("DELETE FROM leads WHERE id = ?", (row['id'],))
+                    conn.commit()
+                    conn.close()
+                    st.toast(f"Deleted {row['first_name']}")
+                    time.sleep(0.5)
+                    st.rerun()
+                
+                if c3.button("Regenerate Draft", key=f"regen_{row['id']}"):
+                    # Reset verification status so drafter picks it up again? 
+                    # Or better: Just set status back to 'Enriched' and clear drafts
+                     conn = get_db_connection()
+                     conn.execute("""
+                        UPDATE leads 
+                        SET status = 'Enriched', 
+                            draft_email_subject = NULL, 
+                            draft_email_body = NULL, 
+                            draft_linkedin_note = NULL, 
+                            draft_whatsapp_nudge = NULL 
+                        WHERE id = ?
+                    """, (row['id'],))
+                     conn.commit()
+                     conn.close()
+                     st.toast(f"Sent back to drafting queue: {row['first_name']}")
+                     time.sleep(0.5)
+                     st.rerun()
+
+    else:
+        st.write("No drafts pending approval. Go to 'Generate Drafts' or 'Dashboard'.")

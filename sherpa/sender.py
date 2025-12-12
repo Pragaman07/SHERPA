@@ -2,6 +2,12 @@ import os.path
 import base64
 import sqlite3
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.image import MIMEImage
+from email.mime.application import MIMEApplication
+from email import encoders
+import mimetypes
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
