@@ -11,7 +11,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def generate_drafts(lead):
+def generate_drafts(lead, cursor):
     """
     Generates email, LinkedIn note, and WhatsApp nudge using Gemini.
     """
@@ -81,7 +81,7 @@ def run_drafter():
     
     for lead in leads:
         print(f"Drafting for {lead['first_name']} {lead['last_name']}...")
-        drafts = generate_drafts(lead)
+        drafts = generate_drafts(lead, cursor)
         
         if drafts:
             try:
