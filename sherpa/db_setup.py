@@ -47,6 +47,12 @@ def create_table(conn):
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """
+    try:
+        c = conn.cursor()
+        c.execute(create_leads_table_sql)
+        print("Table 'leads' created successfully.")
+        c.execute(create_examples_table_sql)
+        print("Table 'examples' created successfully.")
     except sqlite3.Error as e:
         print(e)
 
