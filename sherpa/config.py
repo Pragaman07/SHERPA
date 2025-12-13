@@ -20,8 +20,11 @@ except ImportError:
 # 2. Override with Streamlit Secrets (for Cloud Deployment)
 # Secrets are accessed via st.secrets dict
 def load_secret(key, current_value):
-    if key in st.secrets:
-        return st.secrets[key]
+    try:
+        if key in st.secrets:
+            return st.secrets[key]
+    except (FileNotFoundError, Exception):
+        pass # Secrets file not found or other error, fallback to local/default
     return current_value
 
 PHANTOMBUSTER_API_KEY = load_secret("PHANTOMBUSTER_API_KEY", PHANTOMBUSTER_API_KEY)
